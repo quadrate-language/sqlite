@@ -1,0 +1,8 @@
+{
+	"name": "sqlite",
+	"version": "0.1.0",
+	"description": "SQLite database driver for Quadrate",
+	"native": {
+		"link": ["sqlite3"]
+	}
+}
