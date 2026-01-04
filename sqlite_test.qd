@@ -1,0 +1,109 @@
+// Unit tests for the sqlite module
+use sqlite
+use testing
+
+test "sqlite error constants" {
+	sqlite::ErrOpen 2 testing::assert_eq
+	sqlite::ErrExec 3 testing::assert_eq
+	sqlite::ErrPrepare 4 testing::assert_eq
+	sqlite::ErrBind 5 testing::assert_eq
+	sqlite::ErrStep 6 testing::assert_eq
+	sqlite::ErrInvalidArg 7 testing::assert_eq
+}
+
+test "sqlite type constants" {
+	sqlite::TypeInteger 1 testing::assert_eq
+	sqlite::TypeFloat 2 testing::assert_eq
+	sqlite::TypeText 3 testing::assert_eq
+	sqlite::TypeBlob 4 testing::assert_eq
+	sqlite::TypeNull 5 testing::assert_eq
+}
+
+test "sqlite in-memory basic" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)" db sqlite::exec!
+	"INSERT INTO test (name) VALUES ('Alice')" db sqlite::exec!
+	"INSERT INTO test (name) VALUES ('Bob')" db sqlite::exec!
+	db sqlite::changes 1 testing::assert_eq
+	db sqlite::close
+}
+
+test "sqlite prepared statements" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)" db sqlite::exec!
+
+	"INSERT INTO users (name, age) VALUES (?, ?)" db sqlite::prepare! -> stmt
+	"Alice" 1 stmt sqlite::bind_text!
+	30 2 stmt sqlite::bind_int!
+	stmt sqlite::step! drop
+	stmt sqlite::finalize
+
+	db sqlite::last_insert_rowid 1 testing::assert_eq
+	db sqlite::close
+}
+
+test "sqlite query results" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE items (id INTEGER PRIMARY KEY, value REAL)" db sqlite::exec!
+	"INSERT INTO items (value) VALUES (3.14)" db sqlite::exec!
+
+	"SELECT id, value FROM items" db sqlite::prepare! -> query
+	query sqlite::column_count 2 testing::assert_eq
+	0 query sqlite::column_name "id" testing::assert_eq
+	1 query sqlite::column_name "value" testing::assert_eq
+
+	query sqlite::step! -> has_row
+	has_row 1 testing::assert_eq
+	0 query sqlite::column_int 1 testing::assert_eq
+
+	query sqlite::finalize
+	db sqlite::close
+}
+
+test "sqlite transactions" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE t (x INTEGER)" db sqlite::exec!
+
+	db sqlite::begin!
+	"INSERT INTO t VALUES (1)" db sqlite::exec!
+	"INSERT INTO t VALUES (2)" db sqlite::exec!
+	db sqlite::commit!
+
+	"SELECT COUNT(*) FROM t" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_int 2 testing::assert_eq
+	q sqlite::finalize
+	db sqlite::close
+}
+
+test "sqlite rollback" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE t (x INTEGER)" db sqlite::exec!
+
+	db sqlite::begin!
+	"INSERT INTO t VALUES (1)" db sqlite::exec!
+	db sqlite::rollback!
+
+	"SELECT COUNT(*) FROM t" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_int 0 testing::assert_eq
+	q sqlite::finalize
+	db sqlite::close
+}
+
+test "sqlite null handling" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE t (id INTEGER, name TEXT)" db sqlite::exec!
+
+	"INSERT INTO t (id, name) VALUES (?, ?)" db sqlite::prepare! -> stmt
+	1 1 stmt sqlite::bind_int!
+	2 stmt sqlite::bind_null!
+	stmt sqlite::step! drop
+	stmt sqlite::finalize
+
+	"SELECT name FROM t WHERE id = 1" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_type sqlite::TypeNull testing::assert_eq
+	q sqlite::finalize
+	db sqlite::close
+}
