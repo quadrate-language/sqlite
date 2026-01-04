@@ -107,3 +107,116 @@ test "sqlite null handling" {
 	q sqlite::finalize
 	db sqlite::close
 }
+
+test "sqlite aggregates" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE sales (category TEXT, amount REAL)" db sqlite::exec!
+	"INSERT INTO sales VALUES ('A', 100.0)" db sqlite::exec!
+	"INSERT INTO sales VALUES ('A', 150.0)" db sqlite::exec!
+	"INSERT INTO sales VALUES ('A', 200.0)" db sqlite::exec!
+	"INSERT INTO sales VALUES ('B', 50.0)" db sqlite::exec!
+	"INSERT INTO sales VALUES ('B', 75.0)" db sqlite::exec!
+
+	"SELECT COUNT(*), SUM(amount) FROM sales WHERE category = 'A'" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_int 3 testing::assert_eq
+	q sqlite::finalize
+	db sqlite::close
+}
+
+test "sqlite floats" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE measurements (id INTEGER PRIMARY KEY, value REAL)" db sqlite::exec!
+
+	"INSERT INTO measurements (value) VALUES (?)" db sqlite::prepare! -> ins
+	3.14 1 ins sqlite::bind_float!
+	ins sqlite::step! drop
+	ins sqlite::reset!
+
+	0.0 1 ins sqlite::bind_float!
+	ins sqlite::step! drop
+	ins sqlite::reset!
+
+	-273.15 1 ins sqlite::bind_float!
+	ins sqlite::step! drop
+	ins sqlite::finalize
+
+	"SELECT value FROM measurements WHERE id = 1" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_float 3.14 - 0.01 < testing::assert_true
+	q sqlite::finalize
+	db sqlite::close
+}
+
+test "sqlite joins" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)" db sqlite::exec!
+	"CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, author_id INTEGER)" db sqlite::exec!
+	"INSERT INTO authors (name) VALUES ('Alice')" db sqlite::exec!
+	"INSERT INTO books (title, author_id) VALUES ('Book A', 1)" db sqlite::exec!
+
+	"SELECT b.title, a.name FROM books b JOIN authors a ON b.author_id = a.id" db sqlite::prepare! -> q
+	q sqlite::step! -> has_row
+	has_row 1 testing::assert_eq
+	0 q sqlite::column_text "Book A" testing::assert_eq
+	1 q sqlite::column_text "Alice" testing::assert_eq
+	q sqlite::finalize
+	db sqlite::close
+}
+
+test "sqlite statement reset" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE items (id INTEGER PRIMARY KEY, val INTEGER)" db sqlite::exec!
+
+	"INSERT INTO items (val) VALUES (?)" db sqlite::prepare! -> ins
+	10 1 ins sqlite::bind_int!
+	ins sqlite::step! drop
+	ins sqlite::reset!
+
+	20 1 ins sqlite::bind_int!
+	ins sqlite::step! drop
+	ins sqlite::reset!
+
+	30 1 ins sqlite::bind_int!
+	ins sqlite::step! drop
+	ins sqlite::finalize
+
+	"SELECT COUNT(*) FROM items" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_int 3 testing::assert_eq
+	q sqlite::finalize
+	db sqlite::close
+}
+
+test "sqlite rowid" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE items (name TEXT)" db sqlite::exec!
+	"INSERT INTO items (name) VALUES ('first')" db sqlite::exec!
+	db sqlite::last_insert_rowid 1 testing::assert_eq
+	"INSERT INTO items (name) VALUES ('second')" db sqlite::exec!
+	db sqlite::last_insert_rowid 2 testing::assert_eq
+	"INSERT INTO items (name) VALUES ('third')" db sqlite::exec!
+	db sqlite::last_insert_rowid 3 testing::assert_eq
+	db sqlite::close
+}
+
+test "sqlite multiple queries" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE t1 (x INTEGER)" db sqlite::exec!
+	"CREATE TABLE t2 (y INTEGER)" db sqlite::exec!
+	"INSERT INTO t1 VALUES (1)" db sqlite::exec!
+	"INSERT INTO t2 VALUES (2)" db sqlite::exec!
+
+	"SELECT x FROM t1" db sqlite::prepare! -> q1
+	"SELECT y FROM t2" db sqlite::prepare! -> q2
+
+	q1 sqlite::step! drop
+	q2 sqlite::step! drop
+
+	0 q1 sqlite::column_int 1 testing::assert_eq
+	0 q2 sqlite::column_int 2 testing::assert_eq
+
+	q1 sqlite::finalize
+	q2 sqlite::finalize
+	db sqlite::close
+}
