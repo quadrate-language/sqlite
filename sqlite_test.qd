@@ -220,3 +220,124 @@ test "sqlite multiple queries" {
 	q2 sqlite::finalize
 	db sqlite::close
 }
+
+test "sqlite bulk inserts" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE numbers (id INTEGER PRIMARY KEY, value INTEGER)" db sqlite::exec!
+
+	db sqlite::begin!
+	"INSERT INTO numbers (value) VALUES (?)" db sqlite::prepare! -> ins
+
+	0 -> i
+	i 50 < while {
+		i 1 ins sqlite::bind_int!
+		ins sqlite::step! drop
+		ins sqlite::reset!
+		i 1 + -> i
+		i 50 <
+	}
+	ins sqlite::finalize
+	db sqlite::commit!
+
+	"SELECT COUNT(*) FROM numbers" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_int 50 testing::assert_eq
+	q sqlite::finalize
+
+	"SELECT SUM(value) FROM numbers" db sqlite::prepare! -> q2
+	q2 sqlite::step! drop
+	0 q2 sqlite::column_int 1225 testing::assert_eq  // sum(0..49)
+	q2 sqlite::finalize
+
+	db sqlite::close
+}
+
+test "sqlite unicode" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE texts (id INTEGER PRIMARY KEY, val TEXT)" db sqlite::exec!
+
+	"INSERT INTO texts (val) VALUES (?)" db sqlite::prepare! -> ins
+
+	"Hello, World!" 1 ins sqlite::bind_text!
+	ins sqlite::step! drop
+	ins sqlite::reset!
+
+	"Café résumé naïve" 1 ins sqlite::bind_text!
+	ins sqlite::step! drop
+	ins sqlite::finalize
+
+	"SELECT val FROM texts WHERE id = 1" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_text "Hello, World!" testing::assert_eq
+	q sqlite::finalize
+
+	"SELECT val FROM texts WHERE id = 2" db sqlite::prepare! -> q2
+	q2 sqlite::step! drop
+	0 q2 sqlite::column_text "Café résumé naïve" testing::assert_eq
+	q2 sqlite::finalize
+
+	db sqlite::close
+}
+
+test "sqlite type coercion" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE flexible (id INTEGER PRIMARY KEY, val)" db sqlite::exec!
+
+	"INSERT INTO flexible (val) VALUES (42)" db sqlite::exec!
+	"INSERT INTO flexible (val) VALUES (3.14)" db sqlite::exec!
+	"INSERT INTO flexible (val) VALUES ('hello')" db sqlite::exec!
+
+	// Check types
+	"SELECT typeof(val) FROM flexible WHERE id = 1" db sqlite::prepare! -> q1
+	q1 sqlite::step! drop
+	0 q1 sqlite::column_text "integer" testing::assert_eq
+	q1 sqlite::finalize
+
+	"SELECT typeof(val) FROM flexible WHERE id = 2" db sqlite::prepare! -> q2
+	q2 sqlite::step! drop
+	0 q2 sqlite::column_text "real" testing::assert_eq
+	q2 sqlite::finalize
+
+	"SELECT typeof(val) FROM flexible WHERE id = 3" db sqlite::prepare! -> q3
+	q3 sqlite::step! drop
+	0 q3 sqlite::column_text "text" testing::assert_eq
+	q3 sqlite::finalize
+
+	// Read int as float
+	"SELECT val FROM flexible WHERE id = 1" db sqlite::prepare! -> q4
+	q4 sqlite::step! drop
+	0 q4 sqlite::column_float 42.0 - 0.01 < testing::assert_true
+	q4 sqlite::finalize
+
+	db sqlite::close
+}
+
+test "sqlite empty results" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE t (x INTEGER)" db sqlite::exec!
+
+	"SELECT * FROM t" db sqlite::prepare! -> q
+	q sqlite::step! -> has_row
+	has_row 0 testing::assert_eq
+	q sqlite::finalize
+
+	db sqlite::close
+}
+
+test "sqlite empty strings" {
+	":memory:" sqlite::open! -> db
+	"CREATE TABLE t (val TEXT)" db sqlite::exec!
+
+	"INSERT INTO t VALUES (?)" db sqlite::prepare! -> ins
+	"" 1 ins sqlite::bind_text!
+	ins sqlite::step! drop
+	ins sqlite::finalize
+
+	"SELECT val FROM t" db sqlite::prepare! -> q
+	q sqlite::step! drop
+	0 q sqlite::column_text "" testing::assert_eq
+	0 q sqlite::column_type sqlite::TypeText testing::assert_eq
+	q sqlite::finalize
+
+	db sqlite::close
+}
