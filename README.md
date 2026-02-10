@@ -5,7 +5,7 @@ SQLite database driver for Quadrate.
 ## Installation
 
 ```bash
-quadpm get https://github.com/quadrate-language/sqlite
+quadpm get https://git.sr.ht/~klahr/qdsqlite
 ```
 
 ## Requirements
@@ -113,3 +113,7 @@ fn main() {
 ## License
 
 Apache 2.0
+
+## Contributing
+
+Contributions welcome! Please open an issue or submit a patch on [SourceHut](https://git.sr.ht/~klahr/qdsqlite).
