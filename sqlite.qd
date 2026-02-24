@@ -52,37 +52,26 @@
 ///
 ///         db sqlite::close
 ///     }
-
 /// Failed to open database.
 pub const ErrOpen = 2
-
 /// SQL execution failed.
 pub const ErrExec = 3
-
 /// Failed to prepare statement.
 pub const ErrPrepare = 4
-
 /// Failed to bind parameter.
 pub const ErrBind = 5
-
 /// Failed to step statement.
 pub const ErrStep = 6
-
 /// Invalid argument.
 pub const ErrInvalidArg = 7
-
 /// Column type: INTEGER
 pub const TypeInteger = 1
-
 /// Column type: FLOAT
 pub const TypeFloat = 2
-
 /// Column type: TEXT
 pub const TypeText = 3
-
 /// Column type: BLOB
 pub const TypeBlob = 4
-
 /// Column type: NULL
 pub const TypeNull = 5
 

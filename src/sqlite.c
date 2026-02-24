@@ -3,7 +3,7 @@
  * @brief SQLite database driver implementation for Quadrate
  */
 
-#include "qdsqlite/sqlite.h"
+#include "quadrate/sqlite/sqlite.h"
 #include <quadrate/rt/context.h>
 #include <quadrate/rt/qd_string.h>
 #include <quadrate/rt/runtime.h>
