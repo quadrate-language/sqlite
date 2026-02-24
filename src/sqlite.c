@@ -4,10 +4,10 @@
  */
 
 #include "qdsqlite/sqlite.h"
-#include <qdrt/context.h>
-#include <qdrt/qd_string.h>
-#include <qdrt/runtime.h>
-#include <qdrt/stack.h>
+#include <quadrate/rt/context.h>
+#include <quadrate/rt/qd_string.h>
+#include <quadrate/rt/runtime.h>
+#include <quadrate/rt/stack.h>
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
