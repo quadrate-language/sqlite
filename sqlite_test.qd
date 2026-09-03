@@ -228,13 +228,10 @@ test "sqlite bulk inserts" {
 	db sqlite::begin!
 	"INSERT INTO numbers (value) VALUES (?)" db sqlite::prepare! -> ins
 
-	0 -> i
-	i 50 < while {
+	0 50 1 for i {
 		i 1 ins sqlite::bind_int!
 		ins sqlite::step! drop
 		ins sqlite::reset!
-		i 1 + -> i
-		i 50 <
 	}
 	ins sqlite::finalize
 	db sqlite::commit!

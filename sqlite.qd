@@ -41,12 +41,12 @@
 ///
 ///         // Query data
 ///         "SELECT id, name, age FROM users" db sqlite::prepare! -> query
-///         query sqlite::step! while {
+///         loop {
+///             query sqlite::step! lnot if { break }
 ///             0 query sqlite::column_int -> id
 ///             1 query sqlite::column_text -> name
 ///             2 query sqlite::column_int -> age
 ///             id print ": " print name print " (" print age print ")" print nl
-///             query sqlite::step!
 ///         }
 ///         query sqlite::finalize
 ///
@@ -157,7 +157,7 @@ import "libqdsqlite_static.a" as "sqlite" {
 	/// Execute statement and step to next row.
 	///
 	/// Returns 1 if a row is available, 0 if done.
-	/// Use in a while loop to iterate over results.
+	/// Use in a 'loop' with 'if'/'break' to iterate over results.
 	///
 	/// @param stmt ptr Statement handle
 	/// @return has_row i64 1 if row available, 0 if done
