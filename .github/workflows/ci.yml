@@ -29,14 +29,16 @@ jobs:
         with:
           path: module
 
-      # No release tarballs are published yet, so the compiler is built from
-      # source. This is the whole point of the job: nothing else checks that this
-      # module still compiles against a compiler that has moved on.
       - name: Check out and build the compiler
         run: |
           git clone --depth 1 https://github.com/quadrate-language/quadrate.git
           git config --global --add safe.directory "$PWD/quadrate"
           make -C quadrate release
+
+      - name: Build the module's C sources
+        run: |
+          export PATH="$PWD/quadrate/dist/bin:$PATH"
+          cd module && quadpm build
 
       - name: Format check
         run: |
@@ -48,12 +50,11 @@ jobs:
           export PATH="$PWD/quadrate/dist/bin:$PATH"
           cd module && quadlint .
 
-      # The module resolves by its declared name ("sqlite"), not by the repository
-      # directory, so stage it under that name before running its tests.
       - name: Test
         run: |
           export PATH="$PWD/quadrate/dist/bin:$PATH"
           mkdir -p mods/sqlite
           cp module/*.qd module/qd.json mods/sqlite/
+          cp -r module/lib mods/sqlite/
           export QUADRATE_ROOT="$PWD/mods"
           cd module && quad test sqlite_test.qd
