@@ -38,6 +38,7 @@ jobs:
       - name: Build the module's C sources
         run: |
           export PATH="$PWD/quadrate/dist/bin:$PATH"
+          export QUADRATE_LIBDIR="$PWD/quadrate/dist/lib"
           cd module && quadpm build
 
       - name: Format check
